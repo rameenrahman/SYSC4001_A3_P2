@@ -1,19 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <sys/stat.h> // For stat
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <semaphore.h>
-#include <fcntl.h> // For O_CREAT, O_EXCL
+#include <fcntl.h> 
 
 // Shared memory for rubric
 char* shared_rubric;
+
 // Shared memory for exam
 char* shared_exam;
 
-int fd; // Shared memory file descriptor
+// Shared memory file descriptor
+int fd; 
+
 struct stat sb;
+
+bool exam_marked = false;
 
 // Semaphore for accessing the exam queue
 sem_t *exam_queue_sem;
@@ -27,6 +33,7 @@ void ta_process(int ta_id) {
     while (1) {
        // Acquire semaphore to access exam queue
        //sem_wait(exam_queue_sem);
+
        int id_length = 4;
     
        char student_number[20];
@@ -37,31 +44,40 @@ void ta_process(int ta_id) {
 
        student_number[id_length] = '\0';
 
-       // Simulate getting an exam (replace with actual exam fetching)
+       // Simulate getting an exam 
        printf("TA %d is grading exam %s.\n", ta_id, student_number);
 
        // Access shared_rubric to assess the exam
-       // (No lock needed on rubric if it's read-only after initialization)
 
-       for(int i = id_length; i < sb.stat_size; i+= id_length){
-            if((int)shared_exam[i+2] == (int)'N'){
-                shared_exam[i+2] = 'Y';
-                break
+       int question;
+
+       for(int i = id_length; i < sb.st_size; i+= id_length){
+            if((int)shared_exam[i+3] == (int)'N'){
+                shared_exam[i+3] = 'Y';
+                question = i;
+                break;
+            }
+            if(i == id_length - 1){
+                exam_marked = true;
             }
        }
        
-       printf("TA %d graded exam %s, question %d.\n", ta_id, student_number);
+       if(exam_marked){
+            printf("All questions in exam are graded. Accessing next exam.\n");
+       }
+       else{
+            printf("TA %d graded exam %s, question %c.\n", ta_id, student_number, shared_exam[question]);
+       }
 
        // Release semaphore (if needed for other shared resources, not for the queue here)
-       // For a simple queue, only one TA takes an exam at a time.
-       // If the queue itself is a shared data structure, it would need its own mutex.
+       //sem_post(exam_queue_sem);
 
        sleep(1); // Simulate grading time
-       //sem_post(exam_queue_sem);
    }
 }
 
 char* shared_memory(const char* filename){
+
     // Open the file
    fd = open(filename, O_RDWR);
    if (fd == -1) {
@@ -82,8 +98,7 @@ char* shared_memory(const char* filename){
 
 int main() {
    int num_tas = 2;
-
-   ////
+=
    const char* filename_rubric = "rubric.txt";
    const char* filename_exam = "exam1.txt";
 
@@ -107,8 +122,16 @@ int main() {
        exit(EXIT_FAILURE);
    }
 
-   // Now, shared_memory_ptr points to the file's content in shared memory.
-   // You can access and modify it like a regular char array.
+   if(exam_marked){
+        shared_exam = shared_memory("exam2.txt");
+
+        if (shared_exam == MAP_FAILED) {
+            perror("Error mapping file to memory");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+   }
+
    printf("Content loaded into shared memory:\n%s\n", shared_exam);
    printf("\n");
 
@@ -120,8 +143,6 @@ int main() {
     printf("Character %d:%c, %d\n", i, shared_rubric[i], (int) shared_rubric[i]);
    }
 
-   // Example modification (optional)
-   // shared_memory_ptr[0] = 'N';
 
    // Create and initialize semaphore for exam queue
    exam_queue_sem = sem_open("/exam_queue_sem", O_CREAT | O_EXCL, 0666, 1); // Initial value 1
