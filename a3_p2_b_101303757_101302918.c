@@ -9,6 +9,9 @@
 #include <sys/shm.h>
 #include <semaphore.h>
 #include <fcntl.h> 
+#include <string.h>
+
+#define SHM_SIZE 4096
 
 // Shared memory for rubric
 char* shared_rubric;
@@ -114,24 +117,22 @@ void ta_process(int ta_id) {
    }
 }
 
-char* shared_memory(const char* filename){
+void shared_memory(const char *filename, char *shared_mem, size_t size) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        perror("open");
+        exit(1);
+    }
 
-    // Open the file
-   fd = open(filename, O_RDWR);
-   if (fd == -1) {
-       perror("Error opening file");
-       exit(EXIT_FAILURE);
-   }
+    // Clear shared memory
+    memset(shared_mem, 0, size);
 
-   // Get file size
-   if (fstat(fd, &sb) == -1) {
-       perror("Error getting file size");
-       close(fd);
-       exit(EXIT_FAILURE);
-   }
+    // Copy file contents into shared memory
+    fread(shared_mem, 1, size - 1, f);
 
-   // Map the file into memory
-   return mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    fclose(f);
+
+    printf("Loaded %s into shared memory:\n%s\n", filename, shared_mem);
 }
 
 int main() {
@@ -160,8 +161,10 @@ int main() {
    const char* filename_rubric = "rubric.txt";
    const char* filename_exam = "exam1.txt";
 
+   shared_rubric = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
    // Map the file into memory
-   shared_rubric = shared_memory(filename_rubric);
+   shared_memory(filename_rubric, shared_rubric, sb.st_size);
 
    if (shared_rubric == MAP_FAILED) {
        perror("Error mapping file to memory");
@@ -172,7 +175,9 @@ int main() {
    printf("Content loaded into shared memory:\n%s\n", shared_rubric);
    printf("\n");
 
-   shared_exam = shared_memory(filename_exam);
+   shared_exam  = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+   shared_memory(filename_exam,shared_exam, sb.st_size);
 
    if (shared_exam == MAP_FAILED) {
        perror("Error mapping file to memory");
@@ -204,7 +209,7 @@ int main() {
        // Parent loads student data
         sem_wait(sem_exam);
         int index = *shared_index;
-        shared_exam = shared_memory(exams[index]);
+        shared_memory(exams[index],shared_exam, sb.st_size);
         if (shared_exam == MAP_FAILED) {
             perror("Error mapping file to memory");
             close(fd);
