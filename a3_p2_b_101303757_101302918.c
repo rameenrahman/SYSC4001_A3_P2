@@ -29,6 +29,7 @@ int fd;
 struct stat sb;
 
 sem_t *sem_exam;
+sem_t *sem_rubric;
 
 bool exam_marked = false;
 
@@ -42,8 +43,7 @@ void ta_process(int ta_id) {
    printf("TA %d started.\n", ta_id);
 
     while (1) {
-       // Acquire semaphore to access exam queue
-       //sem_wait(exam_queue_sem);
+       // Acquire semaphore to access exam 
         sem_wait(sem_exam);
 
        int id_length = 4;
@@ -84,10 +84,31 @@ void ta_process(int ta_id) {
             printf("TA %d graded exam %s, question %c.\n", ta_id, student_number, shared_exam[question]);
        }
 
-       // Release semaphore (if needed for other shared resources, not for the queue here)
-       //sem_post(exam_queue_sem);
-
+       // Release semaphore 
        sem_post(sem_exam);
+
+       // Random chance to modify rubric
+       if (rand() % 5 == 0) {
+            sem_wait(sem_rubric);
+            int change = (rand() % 5); // 1, 2, 3, 4, 5
+            int count = 1;
+            for(int i = 3; i < sb.st_size; i+=5){
+                if(count == change){
+                    if(shared_rubric[i] == 52){
+                        shared_rubric[i] = 48;
+                    }
+                    else{
+                        shared_rubric[i] = (int)shared_rubric[i] + 1;
+                    }
+                    break;
+                }
+                
+                count++;
+            }
+            
+            printf("TA %d modified rubric → # %d\n", ta_id, change);
+            sem_post(sem_rubric);
+        }
 
        sleep(1); // Simulate grading time
    }
@@ -162,11 +183,10 @@ int main() {
    printf("Content loaded into shared memory:\n%s\n", shared_exam);
    printf("\n");
 
-   // Create and initialize semaphore for exam queue
-   //exam_queue_sem = sem_open("/exam_queue_sem", O_CREAT | O_EXCL, 0666, 1); // Initial value 1
+   // Create and initialize semaphores
 
     sem_exam   = sem_open("/sem_exam",   O_CREAT, 0666, 1);
-    sem_t *sem_rubric = sem_open("/sem_rubric", O_CREAT, 0666, 1);
+    sem_rubric = sem_open("/sem_rubric", O_CREAT, 0666, 1);
    
    // Fork TA processes
    for (int i = 0; i < num_tas; i++) {
