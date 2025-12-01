@@ -33,7 +33,7 @@ Compiling and Running .c file
 
 12 Run file (ex. ./a3_p2_a)
 
-13. Ctrl C to stop running file
+13. Ctrl Z or Ctrl C to stop running file
 
 
 
