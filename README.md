@@ -24,9 +24,10 @@ Adding .c file
 10. Ctrl D to start next command
 
 Compiling and Running .c file
+
 11. Compile file (ex. gcc a3_p2_a.c -o a3_p2_a)
 
- 12 Run file (ex. ./a3_p2_a)
+12 Run file (ex. ./a3_p2_a)
 
 13. Ctrl C to stop running file
 
