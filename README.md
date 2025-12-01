@@ -6,13 +6,13 @@ Setting Directory
 3. Make a directory to place files (ex. mkdir 4001_a3_p2)
 (follow Assignment 0 instructions)
 
-Adding .txt files
+Adding .txt files 
 4. Create new file;(ex. cat >> exam1.txt)
 5. Copy paste file (.txt) contents
 6. Ctrl D to start next command
 7. Repeat steps 4-6 for all .txt files
 
-Adding .c file
+Adding .c file 
 8. Create new file;(ex. cat >> a3_p2_a.c)
 9. Copy paste file (.c) contents
 10. Ctrl D to start next command
